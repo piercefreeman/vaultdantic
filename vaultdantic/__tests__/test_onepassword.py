@@ -13,11 +13,13 @@ def test_get_vars_reads_cli_json_and_maps_labels() -> None:
     mock_result = MagicMock()
     mock_result.stdout = """
     {
+      "id": "abcd1234",
+      "title": "frameio-service",
       "fields": [
-        {"label": "token", "value": "abc123"},
-        {"label": "destination_id", "value": "dest-123"},
-        {"label": "ignored", "value": null},
-        {"label": "", "value": "skip"}
+        {"label": "token", "type": "CONCEALED", "value": "abc123"},
+        {"label": "destination_id", "type": "CONCEALED", "value": "dest-123"},
+        {"label": "ignored", "type": "CONCEALED", "value": null},
+        {"label": "", "type": "CONCEALED", "value": "skip"}
       ]
     }
     """
@@ -79,4 +81,22 @@ def test_get_vars_raises_for_invalid_json() -> None:
 
     with patch("vaultdantic.vaults.onepassword.subprocess.run", return_value=mock_result):
         with pytest.raises(RuntimeError, match="Failed to parse 1Password CLI JSON response"):
+            config.get_vars()
+
+
+def test_get_vars_raises_for_schema_mismatch() -> None:
+    config = OnePasswordConfigDict(vault="Engineering", entry="frameio-service")
+    mock_result = MagicMock()
+    mock_result.stdout = """
+    {
+      "id": "abcd1234",
+      "title": "frameio-service",
+      "fields": [
+        {"label": "token", "value": "abc123"}
+      ]
+    }
+    """
+
+    with patch("vaultdantic.vaults.onepassword.subprocess.run", return_value=mock_result):
+        with pytest.raises(RuntimeError, match="did not match expected schema"):
             config.get_vars()

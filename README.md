@@ -38,6 +38,8 @@ When `ExampleSettings()` is created, values are resolved in this order:
 2. If required fields are still missing, `OnePasswordConfigDict.get_vars()` is called and only missing keys are filled from the vault entry.  
 3. Any key already provided by earlier sources keeps precedence over vault values, then the final model is validated.
 
+Vault field labels should use env-style keys (for example `EXAMPLE_API_TOKEN`, not `api_token`).
+
 ## Vault Providers
 
 | Provider | Config Class |

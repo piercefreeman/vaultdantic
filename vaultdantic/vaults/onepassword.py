@@ -1,10 +1,31 @@
 from __future__ import annotations
 
-import json
 import subprocess
 from typing import Any, Literal
 
+from pydantic import BaseModel, ConfigDict, ValidationError
+
 from vaultdantic.vaults.base import VaultConfigDict
+
+
+class OnePasswordItemField(BaseModel):
+    """Validated subset of the 1Password item field schema."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    label: str
+    type: str
+    value: Any | None = None
+
+
+class OnePasswordItemResponse(BaseModel):
+    """Validated subset of the 1Password 'op item get --format json' schema."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: str
+    title: str
+    fields: list[OnePasswordItemField]
 
 
 class OnePasswordConfigDict(VaultConfigDict):
@@ -39,27 +60,26 @@ class OnePasswordConfigDict(VaultConfigDict):
             message = exc.stderr.strip() if exc.stderr else "unknown error"
             raise RuntimeError(f"Failed to read item from 1Password: {message}") from exc
 
-        try:
-            payload = json.loads(result.stdout)
-        except json.JSONDecodeError as exc:
+        item = _parse_item_response(result.stdout)
+
+        return _extract_field_values(item)
+
+
+def _parse_item_response(payload_json: str) -> OnePasswordItemResponse:
+    try:
+        return OnePasswordItemResponse.model_validate_json(payload_json)
+    except ValidationError as exc:
+        if any(error.get("type") == "json_invalid" for error in exc.errors()):
             raise RuntimeError("Failed to parse 1Password CLI JSON response.") from exc
+        raise RuntimeError("1Password CLI output did not match expected schema.") from exc
 
-        return _extract_field_values(payload)
 
-
-def _extract_field_values(payload: dict[str, Any]) -> dict[str, Any]:
-    fields = payload.get("fields")
-    if not isinstance(fields, list):
-        return {}
+def _extract_field_values(item: OnePasswordItemResponse) -> dict[str, Any]:
+    fields = item.fields
 
     values: dict[str, Any] = {}
     for field in fields:
-        if not isinstance(field, dict):
-            continue
-
-        label = field.get("label")
-        value = field.get("value")
-        if isinstance(label, str) and label and value is not None:
-            values[label] = value
+        if field.label and field.value is not None:
+            values[field.label] = field.value
 
     return values
