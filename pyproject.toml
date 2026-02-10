@@ -17,6 +17,9 @@ dev = [
     "ty>=0.0.1a26",
 ]
 
+[project.scripts]
+sync-vault-to-env = "vaultdantic.cli:main"
+
 [tool.ruff]
 target-version = "py312"
 line-length = 100

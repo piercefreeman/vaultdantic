@@ -16,20 +16,48 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from vaultdantic import OnePasswordConfigDict, VaultMixin
 
 
-class FrameioSettings(BaseSettings, VaultMixin):
+class ExampleSettings(BaseSettings, VaultMixin):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        env_prefix="FRAMEIO_",
+        env_prefix="EXAMPLE_",
         extra="ignore",
     )
     model_vault_config = OnePasswordConfigDict(
         vault="Engineering",
-        entry="frameio-service",
+        entry="example-service",
     )
 
-    token: SecretStr
-    destination_id: str
+    api_token: SecretStr
+    workspace_id: str
+```
+
+When `ExampleSettings()` is created, values are resolved in this order:
+
+1. `pydantic-settings` loads normal sources first (`__init__` kwargs, environment, `.env`, and file secrets).  
+2. If required fields are still missing, `OnePasswordConfigDict.get_vars()` is called and only missing keys are filled from the vault entry.  
+3. Any key already provided by earlier sources keeps precedence over vault values, then the final model is validated.
+
+## Vault Providers
+
+| Provider | Config Class |
+| --- | --- |
+| 1Password | `OnePasswordConfigDict` |
+
+## CLI
+
+We also provide convenience methods to sync your vaults _into_ an .env file, to make it easier to sync to a remote host or use in Docker. Sync all discovered vault values into `.env`:
+
+```bash
+uv run sync-vault-to-env
+```
+
+This will write your credentials in a special managed-by-vaultdantic section. We will overwrite this section on any subsequent syncs so we recommend leaving it alone.
+
+```dotenv
+# start managed by vaultdantic
+...
+# end managed by vaultdantic
 ```
 
 ## Development
