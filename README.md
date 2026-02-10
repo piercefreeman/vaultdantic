@@ -39,6 +39,8 @@ When `ExampleSettings()` is created, values are resolved in this order:
 3. Any key already provided by earlier sources keeps precedence over vault values, then the final model is validated.
 
 Vault field labels should use env-style keys (for example `EXAMPLE_API_TOKEN`, not `api_token`).
+For nested fields, follow `pydantic-settings` rules: use `env_nested_delimiter` (for example
+`PARENT_CHILD__TOKEN` when `env_nested_delimiter="__"`).
 
 ## Vault Providers
 

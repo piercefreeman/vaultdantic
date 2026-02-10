@@ -1,27 +1,25 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from typing import Any, ClassVar
 
-from pydantic.fields import FieldInfo
-from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
-from pydantic_settings.sources import PydanticBaseEnvSettingsSource
+from pydantic_settings import (
+    BaseSettings,
+    EnvSettingsSource,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
+from pydantic_settings.sources.providers.env import parse_env_vars
 
 from vaultdantic.vaults.base import VaultConfigDict
 
 
-class VaultSettingsSource(PydanticBaseEnvSettingsSource):
+class VaultSettingsSource(EnvSettingsSource):
     """Late settings source that maps env-style vault keys to settings fields."""
 
     def __init__(self, settings_cls: type[BaseSettings]) -> None:
         super().__init__(settings_cls=settings_cls)
-        self._vault_env_vars: dict[str, Any] = {}
-
-    def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
-        for field_key, env_name, value_is_complex in self._extract_field_info(field, field_name):
-            if env_name in self._vault_env_vars:
-                return self._vault_env_vars[env_name], field_key, value_is_complex
-        return None, field_name, False
 
     def __call__(self) -> dict[str, Any]:
         vault_config = getattr(self.settings_cls, "model_vault_config", None)
@@ -39,9 +37,15 @@ class VaultSettingsSource(PydanticBaseEnvSettingsSource):
         if not vault_values:
             return {}
 
-        self._vault_env_vars = {
-            self._apply_case_sensitive(str(key)): value for key, value in vault_values.items()
+        env_like_values = {
+            str(key): _to_env_source_value(value) for key, value in vault_values.items()
         }
+        self.env_vars = parse_env_vars(
+            env_like_values,
+            case_sensitive=self.case_sensitive,
+            ignore_empty=self.env_ignore_empty,
+            parse_none_str=self.env_parse_none_str,
+        )
         resolved_vault_values = super().__call__()
         current_keys = set(self.current_state.keys())
         return {
@@ -62,6 +66,16 @@ class VaultSettingsSource(PydanticBaseEnvSettingsSource):
                 return True
 
         return False
+
+
+def _to_env_source_value(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (dict, list)):
+        return json.dumps(value)
+    return str(value)
 
 
 class VaultMixin:
