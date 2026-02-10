@@ -1,0 +1,43 @@
+[project]
+name = "vaultdantic"
+version = "0.1.0"
+description = "Pydantic settings with vault-backed fallbacks."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2,<3",
+    "pydantic-settings>=2,<3",
+    "python-dotenv>=1.0.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+    "ty>=0.0.1a26",
+]
+
+[project.scripts]
+sync-vault-to-env = "vaultdantic.cli:main"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "B"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["vaultdantic/__tests__"]
+addopts = "-q"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["vaultdantic"]
+
+[tool.hatch.build.targets.sdist]
+include = ["vaultdantic", "README.md"]
