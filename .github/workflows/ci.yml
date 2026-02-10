@@ -61,6 +61,9 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
 
+      - name: Align package version to tag
+        run: uv run scripts/bump_version.py --tag "${GITHUB_REF_NAME}"
+
       - name: Build package
         run: uv build
 
